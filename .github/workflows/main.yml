@@ -29,25 +29,17 @@ jobs:
           # 2. Install ARM64 target libraries
           aqt install-qt windows desktop 6.7.2 win64_msvc2019_arm64 -m qt5compat qtshadertools --outputdir D:/Qt
           
-          # Add Qt paths to GITHUB_PATH
+          # Add Qt ARM64 bin to GITHUB_PATH
           $Qt_ARM64_Bin = "D:/Qt/6.7.2/msvc2019_arm64/bin"
-          $Qt_x64_Bin = "D:/Qt/6.7.2/msvc2019_64/bin"
           echo "$Qt_ARM64_Bin" >> $env:GITHUB_PATH
-          echo "$Qt_x64_Bin" >> $env:GITHUB_PATH
-
-      - name: Setup MSVC for ARM64
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x86_arm64 # Cross-compile for ARM64 on x64 host
 
       - name: Build Moonlight WOA
         shell: cmd
         run: |
           @echo off
-          REM Ensure current scripts can find the right qmake
+          REM DO NOT use msvc-dev-cmd action, because it makes PATH too long for Qt's internal scripts.
+          REM build-arch.bat will call vcvarsall.bat internally.
           set "PATH=D:\Qt\6.7.2\msvc2019_arm64\bin;%PATH%"
-          echo PATH is %PATH%
-          where qmake
           call scripts\build-arch.bat release
         env:
           CI_VERSION: ${{ github.run_number }}
