@@ -1,0 +1,59 @@
+name: Build Windows ARM64 (WOA)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - 'app/**'
+      - 'scripts/**'
+      - '.github/workflows/woa-build.yml'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: '6.7.2'
+          arch: 'win64_msvc2022_arm64'
+          host: 'windows'
+          target: 'desktop'
+          modules: 'qt5compat qtshadertools'
+
+      - name: Setup MSVC for ARM64
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x86_arm64
+
+      - name: Add 7-Zip to PATH
+        run: echo "C:\Program Files\7-Zip" >> $GITHUB_PATH
+        shell: bash
+
+      - name: Build Moonlight WOA
+        shell: cmd
+        run: |
+          call scripts\build-arch.bat release
+        env:
+          CI_VERSION: ${{ github.run_number }}
+
+      - name: Upload Portable Zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: Moonlight-WOA-Portable
+          path: build/installer-release/*.zip
+
+      - name: Upload MSI Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: Moonlight-WOA-MSI
+          path: build/build-arm64-release/*.msi
