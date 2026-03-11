@@ -1,59 +1,56 @@
 name: Build Windows ARM64 (WOA)
 
 on:
-  workflow_dispatch:
-  push:
-    branches:
-      - master
-    paths:
-      - 'app/**'
-      - 'scripts/**'
-      - '.github/workflows/woa-build.yml'
+  workflow_dispatch: # Allows manual triggering from the Actions tab
 
 jobs:
-  build:
+  build-woa:
     runs-on: windows-latest
-
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           submodules: recursive
-          fetch-depth: 0
 
-      - name: Install Qt
-        uses: jurplel/install-qt-action@v3
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          version: '6.7.2'
-          arch: 'win64_msvc2022_arm64'
-          host: 'windows'
-          target: 'desktop'
-          modules: 'qt5compat qtshadertools'
+          python-version: '3.11'
+
+      - name: Install aqtinstall
+        run: pip install aqtinstall
+
+      - name: Install Qt and ARM64 Host Tools
+        shell: pwsh
+        run: |
+          # 1. Install x64 host (needed for windeployqt.exe etc.)
+          aqt install-qt windows desktop 6.7.2 win64_msvc2019_64 -m qt5compat qtshadertools
+          # 2. Install ARM64 target libraries
+          aqt install-qt windows desktop 6.7.2 win64_msvc2019_arm64 -m qt5compat qtshadertools
+          
+          # Add Qt paths to GITHUB_PATH
+          $Qt_ARM64_Bin = "${{ github.workspace }}/Qt/6.7.2/msvc2019_arm64/bin"
+          $Qt_x64_Bin = "${{ github.workspace }}/Qt/6.7.2/msvc2019_64/bin"
+          echo "$Qt_ARM64_Bin" >> $env:GITHUB_PATH
+          echo "$Qt_x64_Bin" >> $env:GITHUB_PATH
 
       - name: Setup MSVC for ARM64
         uses: ilammy/msvc-dev-cmd@v1
         with:
-          arch: x86_arm64
-
-      - name: Add 7-Zip to PATH
-        run: echo "C:\Program Files\7-Zip" >> $GITHUB_PATH
-        shell: bash
+          arch: x86_arm64 # Cross-compile for ARM64 on x64 host
 
       - name: Build Moonlight WOA
         shell: cmd
         run: |
+          # Ensure current scripts can find the right qmake
+          set PATH=%CD%\Qt\6.7.2\msvc2019_arm64\bin;%PATH%
           call scripts\build-arch.bat release
         env:
           CI_VERSION: ${{ github.run_number }}
 
-      - name: Upload Portable Zip
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Moonlight-WOA-Portable
+          name: Moonlight-Windows-ARM64
           path: build/installer-release/*.zip
-
-      - name: Upload MSI Installer
-        uses: actions/upload-artifact@v4
-        with:
-          name: Moonlight-WOA-MSI
-          path: build/build-arm64-release/*.msi
