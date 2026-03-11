@@ -37,9 +37,8 @@ jobs:
         shell: cmd
         run: |
           @echo off
-          REM DO NOT use msvc-dev-cmd action, because it makes PATH too long for Qt's internal scripts.
-          REM build-arch.bat will call vcvarsall.bat internally.
-          set "PATH=D:\Qt\6.7.2\msvc2019_arm64\bin;%PATH%"
+          REM Ensure 7-Zip is in PATH (common in GitHub Runners)
+          set "PATH=C:\Program Files\7-Zip;D:\Qt\6.7.2\msvc2019_arm64\bin;%PATH%"
           call scripts\build-arch.bat release
         env:
           CI_VERSION: ${{ github.run_number }}
@@ -48,4 +47,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Moonlight-Windows-ARM64
-          path: build/installer-release/*.zip
+          path: build/installer-arm64-release/*.zip
